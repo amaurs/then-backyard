@@ -1,6 +1,5 @@
-.chalice
-.chalice/deployments/
-.chalice/venv/
+multi-armed-bandit/.chalice/deployments/
+multi-armed-bandit/.chalice/venv/
 
 .DS_Store
 # Byte-compiled / optimized / DLL files

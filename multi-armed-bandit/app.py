@@ -6,10 +6,6 @@ from chalice import Chalice, Response
 app = Chalice(app_name='multi-armed-bandit')
 
 
-@app.route('/')
-def index():
-    return {'hello': 'world'}
-
 @app.route('/next', methods=['POST'])
 def index():
     request = app.current_request
@@ -20,6 +16,8 @@ def index():
     logging.info(body.get("visited"))
     logging.info(body.get("state"))
     logging.info(body.get("reward"))
+
+
 
     new_state = random.choice(list(set(body.get("available")) - set(body.get("visited"))))
 

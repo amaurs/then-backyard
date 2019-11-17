@@ -6,16 +6,16 @@ from chalice import Chalice, Response
 app = Chalice(app_name='multi-armed-bandit')
 
 
-@app.route('/next', methods=['POST'], cors=True)
+@app.route('/next', methods=['POST'])
 def index():
     request = app.current_request
-    body = request.json_body
+    body = json.loads(app.current_request.raw_body.decode())
 
-
-    logging.info(body.get("available"))
-    logging.info(body.get("visited"))
-    logging.info(body.get("state"))
-    logging.info(body.get("reward"))
+    app.log.info(body)
+    app.log.info(body.get("available"))
+    app.log.info(body.get("visited"))
+    app.log.info(body.get("state"))
+    app.log.info(body.get("reward"))
 
 
 

@@ -6,7 +6,7 @@ from chalice import Chalice, Response
 app = Chalice(app_name='multi-armed-bandit')
 
 
-@app.route('/next', methods=['POST'])
+@app.route('/next', methods=['POST'], cors=True)
 def index():
     request = app.current_request
     body = request.json_body

@@ -9,7 +9,7 @@ app = Chalice(app_name='multi-armed-bandit')
 @app.route('/next', methods=['POST'])
 def index():
     request = app.current_request
-    body = json.loads(app.current_request.raw_body.decode())
+    body = request.json_body
 
     app.log.info(body)
     app.log.info(body.get("available"))
@@ -18,9 +18,11 @@ def index():
     app.log.info(body.get("reward"))
 
 
+    eligible = list(set(body.get("available")) - set(body.get("visited")))
 
-    new_state = random.choice(list(set(body.get("available")) - set(body.get("visited"))))
-
+    new_state = None
+    if eligible:
+        new_state = random.choice(eligible)
 
     return Response(body={'state': new_state},
                     status_code=200)

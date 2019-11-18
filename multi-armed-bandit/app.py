@@ -6,23 +6,21 @@ from chalice import Chalice, Response
 app = Chalice(app_name='multi-armed-bandit')
 
 
-@app.route('/next', methods=['POST'], cors=True)
-def index():
+@app.route('/order', methods=['POST'], cors=True)
+def order():
+    request = app.current_request
+    body = request.json_body
+    states = body.get("states")
+    return Response(body={'order': random.sample(states, len(states))},
+                    status_code=200)
+
+@app.route('/metric', methods=['POST'], cors=True)
+def metric():
     request = app.current_request
     body = request.json_body
 
-    app.log.info(body)
-    app.log.info(body.get("available"))
-    app.log.info(body.get("visited"))
-    app.log.info(body.get("state"))
-    app.log.info(body.get("reward"))
+    app.log.info("State reward: %s" % body.get("state"))
+    app.log.info("Total time: %s" % body.get("reward"))
 
-
-    eligible = list(set(body.get("available")) - set(body.get("visited")))
-
-    new_state = None
-    if eligible:
-        new_state = random.choice(eligible)
-
-    return Response(body={'state': new_state},
+    return Response(body={},
                     status_code=200)

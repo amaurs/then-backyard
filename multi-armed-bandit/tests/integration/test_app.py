@@ -11,44 +11,32 @@ class TestApp(unittest.TestCase):
     def setUp(self):
         self.gateway = LocalGateway(app, Config())
 
-    def test_post_next(self):
-        body = {"available": ["PAGE_1", "PAGE_2", "PAGE_3", "PAGE_4", "PAGE_5"], 
-                "visited": ["PAGE_1", "PAGE_3", "PAGE_5"],
-                "state": "PAGE_3",
-                "reward": 700}
+    def test_contains_all(self):
+        states = ["PAGE_1", "PAGE_2", "PAGE_3", "PAGE_4", "PAGE_5"]
+        body = {"states": states}
         response = self.gateway.handle_request(method='POST',
-                                               path='/next',
+                                               path='/order',
                                                headers={
                                                   'Content-Type': 'application/json'
                                                },
                                                body=json.dumps(body))
-
         logging.info(response)
-
         body = json.loads(response['body'])
-
         assert response['statusCode'] == 200
-        assert body.get('state') in ["PAGE_2", "PAGE_4"]
+        for state in states:
+            assert state in body['order']
 
-    def test_all_visited(self):
-        body = {"available": ["PAGE_1", "PAGE_2", "PAGE_3", "PAGE_4", "PAGE_5"], 
-                "visited": ["PAGE_1", "PAGE_2", "PAGE_3", "PAGE_4", "PAGE_5"],
-                "state": "PAGE_3",
+    def test_reward(self):
+        body = {"state": "PAGE_3",
                 "reward": 700}
         response = self.gateway.handle_request(method='POST',
-                                               path='/next',
+                                               path='/metric',
                                                headers={
                                                   'Content-Type': 'application/json'
                                                },
                                                body=json.dumps(body))
-
-        logging.info(response)
-
         body = json.loads(response['body'])
-
         assert response['statusCode'] == 200
-        assert body.get('state') is None
-
 
 if __name__ == '__main__':
     unittest.main()

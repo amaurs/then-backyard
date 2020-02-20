@@ -30,6 +30,30 @@ def metric():
     app.log.info("State reward: %s" % body.get("state"))
     app.log.info("Total time: %s" % body.get("reward"))
 
+    cloudwatch = boto3.client('cloudwatch')
+    response = cloudwatch.put_metric_data(
+        MetricData=[
+            {
+                'MetricName': body.get("state"),
+                'Dimensions': [
+                    {
+                        'Name': 'Stage',
+                        'Value': 'dev'
+                    },
+                    {
+                        'Name': 'RetentionLowerBound',
+                        'Value': body.get("reward")
+                    },
+                ],
+                'Unit': 'Count',
+                'Value': 1
+            },
+        ],
+        Namespace='MultiArmedBandit'
+    )
+
+    app.log.info(response)
+
     return Response(body={},
                     status_code=200)
 

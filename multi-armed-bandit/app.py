@@ -37,7 +37,7 @@ def write_metric(state, value):
                     },
                     {
                         'Name': 'RetentionLowerBound',
-                        'Value': value
+                        'Value': str(value)
                     },
                 ],
                 'Unit': 'Count',

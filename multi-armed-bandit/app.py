@@ -22,19 +22,14 @@ def order():
     return Response(body={'order': new_order},
                     status_code=200)
 
-@app.route('/metric', methods=['POST'], cors=True)
-def metric():
-    request = app.current_request
-    body = request.json_body
 
-    app.log.info("State reward: %s" % body.get("state"))
-    app.log.info("Total time: %s" % body.get("reward"))
+def write_metric(state, value):
 
     cloudwatch = boto3.client('cloudwatch')
     response = cloudwatch.put_metric_data(
         MetricData=[
             {
-                'MetricName': body.get("state"),
+                'MetricName': state,
                 'Dimensions': [
                     {
                         'Name': 'Stage',
@@ -42,7 +37,7 @@ def metric():
                     },
                     {
                         'Name': 'RetentionLowerBound',
-                        'Value': body.get("reward")
+                        'Value': value
                     },
                 ],
                 'Unit': 'Count',
@@ -53,6 +48,16 @@ def metric():
     )
 
     app.log.info(response)
+
+@app.route('/metric', methods=['POST'], cors=True)
+def metric():
+    request = app.current_request
+    body = request.json_body
+
+    app.log.info("State reward: %s" % body.get("state"))
+    app.log.info("Total time: %s" % body.get("reward"))
+
+    write_metric(body.get("state"), body.get("reward"))
 
     return Response(body={},
                     status_code=200)

@@ -6,13 +6,22 @@ from unittest import mock
 from chalice.config import Config
 from chalice.local import LocalGateway
 
-from app import app
+from app import app, RankStatistics
+
 
 class TestApp(unittest.TestCase):
     def setUp(self):
         self.gateway = LocalGateway(app, Config())
 
-    def test_contains_all(self):
+    @mock.patch("app.RankStatistics._load")
+    def test_contains_all(self, mock_statistics_load):
+        mock_statistics_load.return_value = {
+            "PAGE_1": 5,
+            "PAGE_2": 4,
+            "PAGE_3": 7,
+            "PAGE_4": 2,
+            "PAGE_5": 10
+        }
         states = ["PAGE_1", "PAGE_2", "PAGE_3", "PAGE_4", "PAGE_5"]
         body = {"states": states}
         response = self.gateway.handle_request(method='POST',

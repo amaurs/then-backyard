@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 import os
@@ -9,6 +10,31 @@ from chalice import Chalice, Response
 app = Chalice(app_name='multi-armed-bandit')
 app.log.setLevel(logging.INFO)
 
+EPSILON = 0.15
+
+class RankStatistics:
+
+    _instance = None
+
+    def __init__(self):
+        self.statistics = self._load()
+
+    def _load(self):
+        s3 = boto3.resource('s3')
+
+        content_object = s3.Object(os.getenv("STATISTICS_BUCKET"), os.getenv("STATISTICS_KEY"))
+        file_content = content_object.get()['Body'].read().decode('utf-8')
+        return json.loads(file_content)
+    @classmethod
+    def instance(cls):
+        if cls._instance == None:
+            cls._instance = RankStatistics()
+        return cls._instance
+
+    def score(self, name):
+
+        return self.statistics.get(name)
+
 @app.route('/order', methods=['POST'], cors=True)
 def order():
     request = app.current_request
@@ -16,7 +42,24 @@ def order():
     
     states = body.get("states")
     app.log.info("States available: %s" % states)
-    new_order = random.sample(states, len(states))
+
+    states_with_score = [(state, RankStatistics.instance().score(state)) for state in states if
+                         RankStatistics.instance().score(state)]
+
+    states_sorted = sorted(states_with_score, key=lambda state: state[1])
+
+    new_order = []
+
+    for count in range(len(states_sorted)):
+        if random.random() < EPSILON:
+            # explore
+            current_choice = random.choice(states_sorted)
+            states_sorted.remove(current_choice)
+        else:
+            # exploit
+            current_choice = states_sorted.pop()
+        new_order.append(current_choice[0])
+
     app.log.info("New order: %s" % new_order)
 
     return Response(body={'order': new_order},
@@ -76,3 +119,52 @@ def list():
 
     return Response(body={'images': images},
                     status_code=200)
+
+
+if __name__ == '__main__':
+
+    import random
+
+    print(RankStatistics.instance().score("/conway"))
+
+    names = [key for key in RankStatistics.instance().statistics.keys()] + ["/new"]
+
+    print(names)
+
+    states_with_score = [(key, RankStatistics.instance().score(key)) for key in names if RankStatistics.instance().score(key)]
+
+
+    random.shuffle(states_with_score)
+
+    print(states_with_score)
+
+    states_sorted = sorted(states_with_score, key=lambda state: state[1])
+
+    final = []
+
+    for i in range(len(states_sorted)):
+
+        if random.random() < EPSILON:
+            # explore
+            print("explore")
+            choice = random.choice(states_sorted)
+
+            states_sorted.remove(choice)
+
+
+        else:
+            # exploit
+            print("exploit")
+            choice = states_sorted.pop()
+
+        final.append(choice[0])
+
+        app.log.info(states_sorted)
+        app.log.info(final)
+
+
+
+
+
+
+

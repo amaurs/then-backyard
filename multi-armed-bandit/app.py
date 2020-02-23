@@ -22,7 +22,7 @@ class RankStatistics:
     def _load(self):
         s3 = boto3.resource('s3')
 
-        content_object = s3.Object(os.getenv("STATISTICS_BUCKET"), os.getenv("STATISTICS_KEY"))
+        content_object = s3.Object("multiarmed-bandit-statistics", "last-month.json")
         file_content = content_object.get()['Body'].read().decode('utf-8')
         return json.loads(file_content)
     @classmethod
@@ -32,7 +32,8 @@ class RankStatistics:
         return cls._instance
 
     def score(self, name):
-
+        print(self.statistics)
+        print(name)
         return self.statistics.get(name)
 
 @app.route('/order', methods=['POST'], cors=True)
@@ -43,8 +44,14 @@ def order():
     states = body.get("states")
     app.log.info("States available: %s" % states)
 
-    states_with_score = [(state, RankStatistics.instance().score(state)) for state in states if
-                         RankStatistics.instance().score(state)]
+    states_with_score = []
+
+    for state in states:
+        score = RankStatistics.instance().score(state[0])
+        if score is not None:
+            states_with_score.append((state, score))
+        else:
+            states_with_score.append((state, 0))
 
     states_sorted = sorted(states_with_score, key=lambda state: state[1])
 
@@ -106,65 +113,16 @@ def metric():
                     status_code=200)
 
 
-@app.route('/wigglegrams', methods=['GET'], cors=True)
-def list():
+@app.route('/wigglegrams/{key}', methods=['GET'], cors=True)
+def list(key):
     s3 = boto3.resource('s3')
     bucket = 'wigglegrams'
     bucket_list = s3.Bucket(bucket)
 
     url_base = os.getenv("WIGGLEGRAM_URL", "https://%s.s3.amazonaws.com" % bucket)
 
-    images = [{"url": urllib.parse.urljoin(url_base, file.key)} for file in bucket_list.objects.all()]
+    images = [{"url": urllib.parse.urljoin(url_base, file.key)} for file in bucket_list.objects.filter(Prefix=key)]
     app.log.info("Files found: %s" % images)
 
     return Response(body={'images': images},
                     status_code=200)
-
-
-if __name__ == '__main__':
-
-    import random
-
-    print(RankStatistics.instance().score("/conway"))
-
-    names = [key for key in RankStatistics.instance().statistics.keys()] + ["/new"]
-
-    print(names)
-
-    states_with_score = [(key, RankStatistics.instance().score(key)) for key in names if RankStatistics.instance().score(key)]
-
-
-    random.shuffle(states_with_score)
-
-    print(states_with_score)
-
-    states_sorted = sorted(states_with_score, key=lambda state: state[1])
-
-    final = []
-
-    for i in range(len(states_sorted)):
-
-        if random.random() < EPSILON:
-            # explore
-            print("explore")
-            choice = random.choice(states_sorted)
-
-            states_sorted.remove(choice)
-
-
-        else:
-            # exploit
-            print("exploit")
-            choice = states_sorted.pop()
-
-        final.append(choice[0])
-
-        app.log.info(states_sorted)
-        app.log.info(final)
-
-
-
-
-
-
-

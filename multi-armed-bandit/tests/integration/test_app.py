@@ -19,8 +19,7 @@ class TestApp(unittest.TestCase):
             "PAGE_1": 5,
             "PAGE_2": 4,
             "PAGE_3": 7,
-            "PAGE_4": 2,
-            "PAGE_5": 10
+            "PAGE_4": 2
         }
         states = ["PAGE_1", "PAGE_2", "PAGE_3", "PAGE_4", "PAGE_5"]
         body = {"states": states}
@@ -49,6 +48,3 @@ class TestApp(unittest.TestCase):
         body = json.loads(response['body'])
         assert response['statusCode'] == 200
         mock_write_metric.assert_called_once()
-
-if __name__ == '__main__':
-    unittest.main()

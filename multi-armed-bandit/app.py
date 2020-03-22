@@ -6,11 +6,26 @@ import os
 import boto3
 import urllib.parse
 from chalice import Chalice, Response
+import markovify
 
 app = Chalice(app_name='multi-armed-bandit')
 app.log.setLevel(logging.INFO)
 
 EPSILON = 0.15
+
+es_file = os.path.join(os.path.dirname(__file__), 'chalicelib', 'boleros_es.txt')
+en_file = os.path.join(os.path.dirname(__file__), 'chalicelib', 'boleros_en.txt')
+
+
+with open(es_file) as f:
+    text = f.read()
+    text_model_es = markovify.Text(text)
+
+with open(en_file) as f:
+    text = f.read()
+    text_model_en = markovify.Text(text)
+
+
 
 class RankStatistics:
 
@@ -121,8 +136,20 @@ def list(key):
 
     url_base = os.getenv("WIGGLEGRAM_URL", "https://%s.s3.amazonaws.com" % bucket)
 
-    images = [{"url": urllib.parse.urljoin(url_base, file.key)} for file in bucket_list.objects.filter(Prefix=key)]
+    images = [{"url": urllib.parse.urljoin(url_base, file.key)} for file in bucket_list.objects.filter(Prefix=key) if not file.key.endswith("/")]
     app.log.info("Files found: %s" % images)
 
     return Response(body={'images': images},
                     status_code=200)
+
+@app.route('/boleros/es', cors=True)
+def sentence_es():
+    d = {'sentence':text_model_es.make_short_sentence(100).lower()}
+    return json.dumps(d, ensure_ascii=False)
+
+@app.route('/boleros/en', cors=True)
+def sentence_en():
+    d = {'sentence':text_model_en.make_short_sentence(100).lower()}
+    return json.dumps(d, ensure_ascii=False)
+
+

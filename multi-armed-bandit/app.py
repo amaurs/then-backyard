@@ -136,16 +136,19 @@ def metric():
     return Response(body={},
                     status_code=200)
 
-
 @app.route('/wigglegrams/{key}', methods=['GET'], cors=True)
 def list(key):
     s3 = boto3.resource('s3')
     bucket = 'wigglegrams'
     bucket_list = s3.Bucket(bucket)
+    s3_client = boto3.client('s3')
 
-    url_base = os.getenv("WIGGLEGRAM_URL", "https://%s.s3.amazonaws.com" % bucket)
-
-    images = [{"url": urllib.parse.urljoin(url_base, file.key)} for file in bucket_list.objects.filter(Prefix=key) if not file.key.endswith("/")]
+    images = [{"url": s3_client.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': 'wigglegrams',
+                'Key': file.key},
+        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=key) if
+        not file.key.endswith("/")]
     app.log.info("Files found: %s" % images)
 
     return Response(body={'images': images},

@@ -154,6 +154,24 @@ def list(key):
     return Response(body={'images': images},
                     status_code=200)
 
+@app.route('/rgb/{project}/{resolution}', methods=['GET'], cors=True)
+def list(project: str, resolution: str) -> Response:
+    s3 = boto3.resource('s3')
+    bucket = 'rgb'
+    bucket_list = s3.Bucket(bucket)
+    s3_client = boto3.client('s3')
+
+    images = [{"url": s3_client.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': bucket,
+                'Key': file.key},
+        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=f"{project}/{resolution}") if
+        not file.key.endswith("/")]
+    app.log.info("Files found: %s" % images)
+
+    return Response(body={'images': images},
+                    status_code=200)
+
 @app.route('/boleros/es', cors=True)
 def sentence_es():
     d = {'sentence':text_model_es.make_short_sentence(100).lower()}

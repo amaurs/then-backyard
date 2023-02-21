@@ -13,7 +13,7 @@ import urllib.parse
 from chalice import Chalice, Response
 import markovify
 
-app = Chalice(app_name='multi-armed-bandit')
+app = Chalice(app_name='then-backyard')
 app.log.setLevel(logging.INFO)
 
 EPSILON = 0.15

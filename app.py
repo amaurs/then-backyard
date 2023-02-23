@@ -3,13 +3,11 @@ import logging
 import random
 import os
 import uuid
-import subprocess
 import csv
 import math
 
 import boto3
 import subprocess
-import urllib.parse
 from chalice import Chalice, Response
 import markovify
 
@@ -136,36 +134,36 @@ def metric():
     return Response(body={},
                     status_code=200)
 
-@app.route('/wigglegrams/{key}', methods=['GET'], cors=True)
+@app.route('/photography', methods=['GET'], cors=True)
 def list(key):
     s3 = boto3.resource('s3')
-    bucket = 'wigglegrams'
-    bucket_list = s3.Bucket(bucket)
+    bucket_name = os.getenv("S3_BUCKET_NAME")
+    bucket_list = s3.Bucket(bucket_name)
     s3_client = boto3.client('s3')
 
     images = [{"url": s3_client.generate_presigned_url(
         'get_object',
-        Params={'Bucket': 'wigglegrams',
+        Params={'Bucket': bucket_name,
                 'Key': file.key},
-        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=key) if
+        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=f"photography") if
         not file.key.endswith("/")]
     app.log.info("Files found: %s" % images)
 
     return Response(body={'images': images},
                     status_code=200)
 
-@app.route('/rgb/{project}/{resolution}', methods=['GET'], cors=True)
+@app.route('/colors/{project}/{resolution}', methods=['GET'], cors=True)
 def list(project: str, resolution: str) -> Response:
     s3 = boto3.resource('s3')
-    bucket = 'rgb'
-    bucket_list = s3.Bucket(bucket)
+    bucket_name = os.getenv("S3_BUCKET_NAME")
+    bucket_list = s3.Bucket(bucket_name)
     s3_client = boto3.client('s3')
 
     images = [{"url": s3_client.generate_presigned_url(
         'get_object',
-        Params={'Bucket': bucket,
+        Params={'Bucket': bucket_name,
                 'Key': file.key},
-        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=f"{project}/{resolution}") if
+        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=f"colors/{project}/{resolution}") if
         not file.key.endswith("/")]
     app.log.info("Files found: %s" % images)
 

@@ -5,6 +5,7 @@ import os
 import uuid
 import csv
 import math
+from typing import List
 
 import boto3
 import subprocess
@@ -134,10 +135,10 @@ def metric():
     return Response(body={},
                     status_code=200)
 
-@app.route('/photography', methods=['GET'], cors=True)
-def list(key):
+
+def list_helper(bucket: str, prefix: str) -> List[str]:
     s3 = boto3.resource('s3')
-    bucket_name = os.getenv("S3_BUCKET_NAME")
+    bucket_name = os.getenv(bucket)
     bucket_list = s3.Bucket(bucket_name)
     s3_client = boto3.client('s3')
 
@@ -145,30 +146,38 @@ def list(key):
         'get_object',
         Params={'Bucket': bucket_name,
                 'Key': file.key},
-        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=f"photography") if
+        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=prefix) if
         not file.key.endswith("/")]
     app.log.info("Files found: %s" % images)
 
-    return Response(body={'images': images},
+    return images
+
+@app.route('/photography', methods=['GET'], cors=True)
+def photography():
+    return Response(body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix="photography")},
                     status_code=200)
+
 
 @app.route('/colors/{project}/{resolution}', methods=['GET'], cors=True)
-def list(project: str, resolution: str) -> Response:
-    s3 = boto3.resource('s3')
-    bucket_name = os.getenv("S3_BUCKET_NAME")
-    bucket_list = s3.Bucket(bucket_name)
-    s3_client = boto3.client('s3')
+def colors(project: str, resolution: str) -> Response:
+    return Response(
+        body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{project}/{resolution}")},
+        status_code=200)
 
-    images = [{"url": s3_client.generate_presigned_url(
-        'get_object',
-        Params={'Bucket': bucket_name,
-                'Key': file.key},
-        ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=f"colors/{project}/{resolution}") if
-        not file.key.endswith("/")]
-    app.log.info("Files found: %s" % images)
 
-    return Response(body={'images': images},
-                    status_code=200)
+@app.route('/colors/{project}/{resolution}', methods=['GET'], cors=True)
+def colors(project: str, resolution: str) -> Response:
+    return Response(
+        body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{project}/{resolution}")},
+        status_code=200)
+
+
+@app.route('/wigglegrams/{key}', methods=['GET'], cors=True)
+def list(key):
+    return Response(
+        body={'images': list_helper(bucket=os.getenv("wigglegrams"), prefix=key)},
+        status_code=200)
+
 
 @app.route('/boleros/es', cors=True)
 def sentence_es():

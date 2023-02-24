@@ -164,13 +164,6 @@ def colors(project: str, resolution: str) -> Response:
         status_code=200)
 
 
-@app.route('/wigglegrams/{key}', methods=['GET'], cors=True)
-def list(key: str):
-    return Response(
-        body={'images': list_helper(bucket="wigglegrams", prefix=key)},
-        status_code=200)
-
-
 @app.route('/boleros/es', cors=True)
 def sentence_es():
     d = {'sentence':text_model_es.make_short_sentence(100).lower()}

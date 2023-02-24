@@ -138,13 +138,12 @@ def metric():
 
 def list_helper(bucket: str, prefix: str) -> List[str]:
     s3 = boto3.resource('s3')
-    bucket_name = os.getenv(bucket)
-    bucket_list = s3.Bucket(bucket_name)
+    bucket_list = s3.Bucket(bucket)
     s3_client = boto3.client('s3')
 
     images = [{"url": s3_client.generate_presigned_url(
         'get_object',
-        Params={'Bucket': bucket_name,
+        Params={'Bucket': bucket,
                 'Key': file.key},
         ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=prefix) if
         not file.key.endswith("/")]

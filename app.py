@@ -165,13 +165,6 @@ def colors(project: str, resolution: str) -> Response:
         status_code=200)
 
 
-@app.route('/colors/{project}/{resolution}', methods=['GET'], cors=True)
-def colors(project: str, resolution: str) -> Response:
-    return Response(
-        body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{project}/{resolution}")},
-        status_code=200)
-
-
 @app.route('/wigglegrams/{key}', methods=['GET'], cors=True)
 def list(key):
     return Response(

@@ -48,6 +48,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.chalice
 nosetests.xml
 coverage.xml
 *.cover

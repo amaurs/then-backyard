@@ -163,7 +163,11 @@ def colors(project: str, resolution: str) -> Response:
         body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{project}/{resolution}")},
         status_code=200)
 
-
+@app.route('/posts', methods=['GET'], cors=True)
+def posts() -> Response:
+    return Response(
+        body={'posts': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"blog")},
+        status_code=200)
 @app.route('/boleros/es', cors=True)
 def sentence_es():
     d = {'sentence':text_model_es.make_short_sentence(100).lower()}

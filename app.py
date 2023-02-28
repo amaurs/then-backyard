@@ -139,7 +139,7 @@ def list_bucket(bucket: str, prefix: str) -> List[str]:
     s3 = boto3.resource('s3')
     bucket_list = s3.Bucket(bucket)
 
-    files = [file.split("/")[-1] for file in bucket_list.objects.filter(Prefix=prefix) if
+    files = [file.key.split("/")[-1] for file in bucket_list.objects.filter(Prefix=prefix) if
         not file.key.endswith("/")]
     app.log.info("Files found: %s" % images)
 

@@ -135,7 +135,15 @@ def metric():
     return Response(body={},
                     status_code=200)
 
+def list_bucket(bucket: str, prefix: str) -> List[str]:
+    s3 = boto3.resource('s3')
+    bucket_list = s3.Bucket(bucket)
 
+    files = [file.split("/")[-1] for file in bucket_list.objects.filter(Prefix=prefix) if
+        not file.key.endswith("/")]
+    app.log.info("Files found: %s" % images)
+
+    return files
 def list_helper(bucket: str, prefix: str) -> List[str]:
     s3 = boto3.resource('s3')
     bucket_list = s3.Bucket(bucket)
@@ -166,18 +174,17 @@ def colors(project: str, resolution: str) -> Response:
 @app.route('/posts', methods=['GET'], cors=True)
 def posts() -> Response:
     return Response(
-        body={'posts': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"blog")},
+        body={'posts': list_bucket(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"blog")},
         status_code=200)
 @app.route('/boleros/es', cors=True)
 def sentence_es():
-    d = {'sentence':text_model_es.make_short_sentence(100).lower()}
+    d = {'sentence': text_model_es.make_short_sentence(100).lower()}
     return json.dumps(d, ensure_ascii=False)
 
 @app.route('/boleros/en', cors=True)
 def sentence_en():
-    d = {'sentence':text_model_en.make_short_sentence(100).lower()}
+    d = {'sentence': text_model_en.make_short_sentence(100).lower()}
     return json.dumps(d, ensure_ascii=False)
-
 
 
 def create_instance_3d(filename, n_cities, point_set):

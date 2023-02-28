@@ -141,7 +141,6 @@ def list_bucket(bucket: str, prefix: str) -> List[str]:
 
     files = [file.key.split("/")[-1] for file in bucket_list.objects.filter(Prefix=prefix) if
         not file.key.endswith("/")]
-    app.log.info("Files found: %s" % images)
 
     return files
 def list_helper(bucket: str, prefix: str) -> List[str]:

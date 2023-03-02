@@ -187,6 +187,23 @@ def post(filename: str) -> Response:
                     'Key': f"blog/{filename}"},
             ExpiresIn=60)},
         status_code=200)
+
+@app.route('/codes', methods=['GET'], cors=True)
+def codes() -> Response:
+    s3 = boto3.resource('s3')
+
+    content_object = s3.Object(os.getenv("S3_BUCKET_NAME"), 'qr/mappings.json')
+    file_content = content_object.get()['Body'].read().decode('utf-8')
+    mappings = json.loads(file_content)
+
+    links = []
+    for key, value in mappings.items():
+        links.append({'code': key, 'redirect': value})
+
+    return Response(
+        body={'codes': links},
+        status_code=200)
+
 @app.route('/boleros/es', cors=True)
 def sentence_es():
     d = {'sentence': text_model_es.make_short_sentence(100).lower()}

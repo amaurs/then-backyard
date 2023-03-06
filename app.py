@@ -180,12 +180,18 @@ def posts() -> Response:
 @app.route('/post/{filename}', methods=['GET'], cors=True)
 def post(filename: str) -> Response:
     s3_client = boto3.client('s3')
+
+    s3 = boto3.resource('s3')
+    markdown = s3.Object(os.getenv("S3_BUCKET_NAME"), f"blog/{filename}").get()['Body'].read().decode('utf-8')
+
     return Response(
         body={'url': s3_client.generate_presigned_url(
             'get_object',
             Params={'Bucket': os.getenv("S3_BUCKET_NAME"),
                     'Key': f"blog/{filename}"},
-            ExpiresIn=60)},
+            ExpiresIn=60),
+            'markdown': markdown,
+            'slug': filename},
         status_code=200)
 
 @app.route('/codes', methods=['GET'], cors=True)

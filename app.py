@@ -170,6 +170,32 @@ def colors(project: str, resolution: str) -> Response:
         body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{project}/{resolution}")},
         status_code=200)
 
+@app.route('/colors', methods=['GET'], cors=True)
+def colors() -> Response:
+    return Response(
+        body={'colors': list_bucket(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors")},
+        status_code=200)
+@app.route('/color/{slug}/{resolution}', methods=['GET'], cors=True)
+def color(slug: str, resolution: str) -> Response:
+    images = list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{slug}/{resolution}")
+
+    reponse = {
+        "cube": None,
+        "square": None,
+        "slug": slug,
+        "resolution": resolution,
+    }
+
+    for image in images:
+        if "cube" in image["url"]:
+            reponse.update({"cube": image["url"]})
+        if "square" in image["url"]:
+            reponse.update({"square": image["url"]})
+
+    return Response(
+        body=reponse,
+        status_code=200)
+
 @app.route('/posts', methods=['GET'], cors=True)
 def posts() -> Response:
     return Response(

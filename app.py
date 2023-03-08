@@ -174,17 +174,49 @@ def colors(project: str, resolution: str) -> Response:
 
 @app.route('/colors', methods=['GET'], cors=True)
 def colors() -> Response:
+    s3_client = boto3.client('s3')
     s3 = boto3.resource('s3')
     bucket_list = s3.Bucket(os.getenv("S3_BUCKET_NAME"))
 
-    projects = defaultdict(set)
+    projects = defaultdict(dict)
+    CUBE = "cube"
+    SQUARE = "square"
     for obj in bucket_list.objects.filter(Prefix='colors/'):
         if len(url_structure := obj.key.split("/")) == 4:
             prefix, slug, resolution, file = url_structure
-            projects[slug].add(resolution)
+            if SQUARE in file:
+                signed_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': os.getenv("S3_BUCKET_NAME"),
+                            'Key': obj.key},
+                    ExpiresIn=60)
+                if resolution not in projects[slug]:
+                    projects[slug].update({resolution: {SQUARE: signed_url}})
+                else:
+                    projects[slug][resolution].update({SQUARE: signed_url})
+            if CUBE in file:
+                signed_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': os.getenv("S3_BUCKET_NAME"),
+                            'Key': obj.key},
+                    ExpiresIn=60)
+                if resolution not in projects[slug]:
+                    projects[slug].update({resolution: {CUBE: signed_url}})
+                else:
+                    projects[slug][resolution].update({CUBE: signed_url})
 
     return Response(
-        body={"colors": [{"slug": key, "resolutions": list(value)} for key, value in projects.items()]},
+        body={"colors": [
+            {
+                "slug": key,
+                "resolutions": [
+                    {
+                        "resolution": resolution,
+                        "cube": images["cube"],
+                        "square": images["square"]
+                    } for resolution, images in value.items()]
+            } for key, value in projects.items()]
+        },
         status_code=200)
 
 @app.route('/color/{slug}/{resolution}', methods=['GET'], cors=True)

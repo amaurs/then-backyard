@@ -5,6 +5,7 @@ import os
 import uuid
 import csv
 import math
+from collections import defaultdict
 from typing import List
 
 import boto3
@@ -170,11 +171,22 @@ def colors(project: str, resolution: str) -> Response:
         body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{project}/{resolution}")},
         status_code=200)
 
+
 @app.route('/colors', methods=['GET'], cors=True)
 def colors() -> Response:
+    s3 = boto3.resource('s3')
+    bucket_list = s3.Bucket(os.getenv("S3_BUCKET_NAME"))
+
+    projects = defaultdict(set)
+    for obj in bucket_list.objects.filter(Prefix='colors/'):
+        if len(url_structure := obj.key.split("/")) == 4:
+            prefix, slug, resolution, file = url_structure
+            projects[slug].add(resolution)
+
     return Response(
-        body={'colors': list_bucket(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors")},
+        body={"colors": [{"slug": key, "resolutions": list(value)} for key, value in projects.items()]},
         status_code=200)
+
 @app.route('/color/{slug}/{resolution}', methods=['GET'], cors=True)
 def color(slug: str, resolution: str) -> Response:
     images = list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{slug}/{resolution}")

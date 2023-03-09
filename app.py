@@ -6,10 +6,13 @@ import uuid
 import csv
 import math
 from collections import defaultdict
-from typing import List
+from functools import cache
+from typing import List, Dict
 
 import boto3
 import subprocess
+
+from botocore.exceptions import ClientError
 from chalice import Chalice, Response
 import markovify
 
@@ -172,6 +175,19 @@ def colors(project: str, resolution: str) -> Response:
         status_code=200)
 
 
+@cache
+def read_color_config(slug: str) -> Dict:
+    try:
+        s3 = boto3.resource('s3')
+        content_object = s3.Object(os.getenv("S3_BUCKET_NAME"), f'colors/{slug}/config.json')
+        return json.loads(content_object.get()['Body'].read().decode('utf-8'))
+    except ClientError:
+        return {
+            "default": None,
+            "description": None
+        }
+
+
 @app.route('/colors', methods=['GET'], cors=True)
 def colors() -> Response:
     s3_client = boto3.client('s3')
@@ -213,7 +229,8 @@ def colors() -> Response:
                     {
                         "resolution": resolution,
                         "cube": images["cube"],
-                        "square": images["square"]
+                        "square": images["square"],
+                        **read_color_config(key),
                     } for resolution, images in value.items()]
             } for key, value in projects.items()]
         },

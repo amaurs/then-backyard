@@ -225,12 +225,12 @@ def colors() -> Response:
         body={"colors": [
             {
                 "slug": key,
+                **read_color_config(key),
                 "resolutions": [
                     {
                         "resolution": resolution,
                         "cube": images["cube"],
                         "square": images["square"],
-                        **read_color_config(key),
                     } for resolution, images in value.items()]
             } for key, value in projects.items()]
         },

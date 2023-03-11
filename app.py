@@ -24,6 +24,7 @@ EPSILON = 0.15
 FROM = 0
 TO = 1
 FACTOR = 1000
+ONE_DAY_IN_SECONDS = 86400
 
 es_file = os.path.join(os.path.dirname(__file__), 'chalicelib', 'boleros_es.txt')
 en_file = os.path.join(os.path.dirname(__file__), 'chalicelib', 'boleros_en.txt')
@@ -175,7 +176,6 @@ def colors(project: str, resolution: str) -> Response:
         status_code=200)
 
 
-@cache
 def read_color_config(slug: str) -> Dict:
     try:
         s3 = boto3.resource('s3')
@@ -188,6 +188,7 @@ def read_color_config(slug: str) -> Dict:
         }
 
 
+@cache
 @app.route('/colors', methods=['GET'], cors=True)
 def colors() -> Response:
     s3_client = boto3.client('s3')
@@ -197,6 +198,7 @@ def colors() -> Response:
     projects = defaultdict(dict)
     CUBE = "cube"
     SQUARE = "square"
+
     for obj in bucket_list.objects.filter(Prefix='colors/'):
         if len(url_structure := obj.key.split("/")) == 4:
             prefix, slug, resolution, file = url_structure
@@ -205,7 +207,7 @@ def colors() -> Response:
                     'get_object',
                     Params={'Bucket': os.getenv("S3_BUCKET_NAME"),
                             'Key': obj.key},
-                    ExpiresIn=60)
+                    ExpiresIn=ONE_DAY_IN_SECONDS)
                 if resolution not in projects[slug]:
                     projects[slug].update({resolution: {SQUARE: signed_url}})
                 else:
@@ -215,7 +217,7 @@ def colors() -> Response:
                     'get_object',
                     Params={'Bucket': os.getenv("S3_BUCKET_NAME"),
                             'Key': obj.key},
-                    ExpiresIn=60)
+                    ExpiresIn=ONE_DAY_IN_SECONDS)
                 if resolution not in projects[slug]:
                     projects[slug].update({resolution: {CUBE: signed_url}})
                 else:

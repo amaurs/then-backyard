@@ -163,12 +163,13 @@ def list_helper(bucket: str, prefix: str) -> List[str]:
 
     return images
 
+@cache
 @app.route('/photography', methods=['GET'], cors=True)
 def photography():
     return Response(body={'images': list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix="photography")},
                     status_code=200)
 
-
+@cache
 @app.route('/colors/{project}/{resolution}', methods=['GET'], cors=True)
 def colors(project: str, resolution: str) -> Response:
     return Response(
@@ -238,6 +239,7 @@ def colors() -> Response:
         },
         status_code=200)
 
+@cache
 @app.route('/color/{slug}/{resolution}', methods=['GET'], cors=True)
 def color(slug: str, resolution: str) -> Response:
     images = list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"colors/{slug}/{resolution}")
@@ -259,13 +261,14 @@ def color(slug: str, resolution: str) -> Response:
         body=reponse,
         status_code=200)
 
+@cache
 @app.route('/posts', methods=['GET'], cors=True)
 def posts() -> Response:
     return Response(
         body={'posts': list_bucket(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"blog")},
         status_code=200)
 
-
+@cache
 @app.route('/post/{filename}', methods=['GET'], cors=True)
 def post(filename: str) -> Response:
     s3_client = boto3.client('s3')
@@ -283,6 +286,7 @@ def post(filename: str) -> Response:
             'slug': filename},
         status_code=200)
 
+@cache
 @app.route('/codes', methods=['GET'], cors=True)
 def codes() -> Response:
     s3 = boto3.resource('s3')

@@ -505,3 +505,29 @@ def solver():
     tour = implement_tour(tour_file, final_cities)
 
     return tour
+
+@app.route('/names', methods=['GET'], cors=True)
+def get_names():
+    try:
+        s3 = boto3.resource('s3')
+        content_object = s3.Object(os.getenv("S3_BUCKET_NAME"), 'names.json')
+        return {"names": json.loads(content_object.get()['Body'].read().decode('utf-8'))}
+    except ClientError:
+        return {
+            "default": None,
+            "description": None
+        }
+
+@app.route('/names', methods=['UPDATE'], cors=True)
+def update_names():
+    try:
+        names = json.loads(app.current_request.query_params.get('names'))
+        s3 = boto3.resource('s3')
+        content_object = s3.Object(os.getenv("S3_BUCKET_NAME"), 'names.json')
+        content_object.put(Body=(bytes(json.dumps(json_data).encode('UTF-8'))))
+        return {"names": names}
+    except ClientError:
+        return {
+            "default": None,
+            "description": None
+        }

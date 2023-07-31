@@ -524,7 +524,7 @@ def update_names():
         names = json.loads(app.current_request.query_params.get('names'))
         s3 = boto3.resource('s3')
         content_object = s3.Object(os.getenv("S3_BUCKET_NAME"), 'names.json')
-        content_object.put(Body=(bytes(json.dumps(json_data).encode('UTF-8'))))
+        content_object.put(Body=(bytes(json.dumps(names).encode('UTF-8'))))
         return {"names": names}
     except ClientError:
         return {

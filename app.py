@@ -518,10 +518,11 @@ def get_names():
             "description": None
         }
 
-@app.route('/names', methods=['UPDATE'], cors=True)
+@app.route('/names', methods=['POST'], cors=True)
 def update_names():
     try:
-        names = json.loads(app.current_request.query_params.get('names'))
+        body = app.current_request.json_body
+        names = json.loads(body.get('names'))
         s3 = boto3.resource('s3')
         content_object = s3.Object(os.getenv("S3_BUCKET_NAME"), 'names.json')
         content_object.put(Body=(bytes(json.dumps(json_data).encode('UTF-8'))))

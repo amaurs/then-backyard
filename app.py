@@ -5,7 +5,7 @@ import os
 import uuid
 import csv
 import math
-from collections import defaultdict
+from collections import defaultdict, Counter
 from functools import cache
 from typing import List, Dict
 
@@ -448,7 +448,7 @@ def implement_tour(tour_file, cities):
     final_tour = []
     with open(tour_file, 'r') as file_handle:
         csv_reader = csv.reader(file_handle, delimiter=' ')
-        next(csv_reader) # skip the first row which do not contain any city
+        next(csv_reader)  # skip the first row which do not contain any city
         first = None
         for edge in csv_reader:
             app.log.info("edge %s" % edge)
@@ -531,3 +531,31 @@ def update_names():
             "default": None,
             "description": None
         }
+
+
+@cache
+@app.route('/calendar/{user}', methods=['GET'], cors=True)
+def calendar(user: str) -> Response:
+    s3 = boto3.resource('s3')
+    bucket_list = s3.Bucket(os.environ["S3_BUCKET_NAME"])
+    prefix = f"calendar/{user}"
+    files = [file.key[len(prefix) + 1:26] for file in bucket_list.objects.filter(Prefix=prefix) if
+             not file.key.endswith("/")]
+    return Response(
+        body={
+            'start': {
+                'year': 1986,
+                'month': 3,
+                'day': 23
+            },
+            'photos': [[key, count] for key, count in Counter(files).items()]},
+        status_code=200)
+
+
+@cache
+@app.route('/calendars/{user}/{key}', methods=['GET'], cors=True)
+def calendars(user: str, key: str) -> Response:
+    photos = list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"calendar/{user}/{key.replace('-', '/')}")
+    return Response(
+        body={'photos': [photo.get("url") for photo in photos]},
+        status_code=200)

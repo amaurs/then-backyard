@@ -12,7 +12,7 @@ class TestApp(unittest.TestCase):
         self.gateway = LocalGateway(app, Config())
 
     def test_dummy(self):
-        assert True
+        assert False
 
 
 if __name__ == '__main__':

@@ -14,10 +14,24 @@ import subprocess
 
 from botocore.exceptions import ClientError
 from chalice import Chalice, Response
+from chalice.app import ConvertToMiddleware
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools import Tracer
 import markovify
 
 app = Chalice(app_name='then-backyard')
-app.log.setLevel(logging.INFO)
+logger = Logger()
+tracer = Tracer()
+
+app.register_middleware(ConvertToMiddleware(logger.inject_lambda_context))
+app.register_middleware(ConvertToMiddleware(tracer.capture_lambda_handler))
+
+
+@app.middleware('http')
+def inject_route_info(event, get_response):
+    logger.structure_logs(append=True, request_path=event.path)
+    return get_response(event)
+
 
 EPSILON = 0.15
 
@@ -70,7 +84,7 @@ def order():
     body = request.json_body
     
     states = body.get("states")
-    app.log.info("States available: %s" % states)
+    logger.info("States available: %s" % states)
 
     states_with_score = []
 
@@ -95,7 +109,7 @@ def order():
             current_choice = states_sorted.pop()
         new_order.append(current_choice[0])
 
-    app.log.info("New order: %s" % new_order)
+    logger.info("New order: %s" % new_order)
 
     return Response(body={'order': new_order},
                     status_code=200)
@@ -125,15 +139,15 @@ def write_metric(state, value):
         Namespace='MultiArmedBandit'
     )
 
-    app.log.info(response)
+    logger.info(response)
 
 @app.route('/metric', methods=['POST'], cors=True)
 def metric():
     request = app.current_request
     body = request.json_body
 
-    app.log.info("State reward: %s" % body.get("state"))
-    app.log.info("Total time: %s" % body.get("reward"))
+    logger.info("State reward: %s" % body.get("state"))
+    logger.info("Total time: %s" % body.get("reward"))
 
     write_metric(body.get("state"), body.get("reward"))
 
@@ -159,7 +173,7 @@ def list_helper(bucket: str, prefix: str) -> List[str]:
                 'Key': file.key},
         ExpiresIn=60)} for file in bucket_list.objects.filter(Prefix=prefix) if
         not file.key.endswith("/")]
-    app.log.info("Files found: %s" % images)
+    logger.info("Files found: %s" % images)
 
     return images
 
@@ -430,7 +444,7 @@ def generate_random_plane():
     return [x, y, z]
 
 def execute(cmd):
-    app.log.info(" ".join(cmd))
+    logger.info(" ".join(cmd))
     popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line
@@ -442,7 +456,7 @@ def execute(cmd):
 def call_solver(tsp_file, tour_file, dim=3):
     cmd = ["./chalicelib/linkern", "-o", tour_file, "-N", "%s" % dim, tsp_file]
     for line in execute(cmd):
-        app.log.info(line)
+        logger.info(line)
 
 def implement_tour(tour_file, cities):
     final_tour = []
@@ -451,7 +465,7 @@ def implement_tour(tour_file, cities):
         next(csv_reader)  # skip the first row which do not contain any city
         first = None
         for edge in csv_reader:
-            app.log.info("edge %s" % edge)
+            logger.info("edge %s" % edge)
             if first is None:
                 first = cities[int(edge[FROM])]
             final_tour += cities[int(edge[FROM])]
@@ -461,15 +475,15 @@ def implement_tour(tour_file, cities):
 @app.route('/', methods=['POST'], cors=True)
 def index():
     body = app.current_request.json_body
-    app.log.info("headers: %s", app.current_request.headers)
-    app.log.info("context: %s", app.current_request.context)
-    app.log.info("json_body: %s", app.current_request.json_body)
-    app.log.info("method: %s", app.current_request.method)
-    app.log.info("query_params: %s", app.current_request.query_params)
-    app.log.info("raw_body: %s", app.current_request.raw_body)
-    app.log.info("stage_vars: %s", app.current_request.stage_vars)
-    app.log.info("to_dict: %s", app.current_request.to_dict)
-    app.log.info("uri_params: %s", app.current_request.uri_params)
+    logger.info("headers: %s", app.current_request.headers)
+    logger.info("context: %s", app.current_request.context)
+    logger.info("json_body: %s", app.current_request.json_body)
+    logger.info("method: %s", app.current_request.method)
+    logger.info("query_params: %s", app.current_request.query_params)
+    logger.info("raw_body: %s", app.current_request.raw_body)
+    logger.info("stage_vars: %s", app.current_request.stage_vars)
+    logger.info("to_dict: %s", app.current_request.to_dict)
+    logger.info("uri_params: %s", app.current_request.uri_params)
     point_set = body['point_set']
     n_cities = min(int(body['n_cities']), 3000)
 
@@ -487,7 +501,7 @@ def index():
 def solver():
     cities = json.loads(app.current_request.query_params.get('cities'))
     dim = int(app.current_request.query_params.get('dimension', 2))
-    app.log.info(dim)
+    logger.info(dim)
     tsp_file = "/tmp/%s.tsp" % uuid.uuid4()
     tour_file = "/tmp/%s.tour" % uuid.uuid4()
 

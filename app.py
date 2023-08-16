@@ -1,11 +1,10 @@
 import json
-import logging
 import random
 import os
 import uuid
 import csv
 import math
-from collections import defaultdict, Counter
+from collections import defaultdict
 from functools import cache
 from typing import List, Dict
 
@@ -18,6 +17,8 @@ from chalice.app import ConvertToMiddleware
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools import Tracer
 import markovify
+
+from modules.container import container
 
 app = Chalice(app_name='then-backyard')
 logger = Logger()
@@ -550,11 +551,6 @@ def update_names():
 @cache
 @app.route('/calendar/{user}', methods=['GET'], cors=True)
 def calendar(user: str) -> Response:
-    s3 = boto3.resource('s3')
-    bucket_list = s3.Bucket(os.environ["S3_BUCKET_NAME"])
-    prefix = f"calendar/{user}"
-    files = [file.key[len(prefix) + 1:26] for file in bucket_list.objects.filter(Prefix=prefix) if
-             not file.key.endswith("/")]
     return Response(
         body={
             'start': {
@@ -562,7 +558,10 @@ def calendar(user: str) -> Response:
                 'month': 3,
                 'day': 23
             },
-            'photos': [[key, count] for key, count in Counter(files).items()]},
+            'photos': container.photo_service().get_photo_counts_by_date(
+                prefix=f"calendar/{user}",
+                bucket=os.getenv("S3_BUCKET_NAME"))
+        },
         status_code=200)
 
 

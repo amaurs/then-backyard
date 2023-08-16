@@ -2,7 +2,7 @@ import boto3
 from dependency_injector.containers import DeclarativeContainer
 from dependency_injector.providers import Singleton
 
-from services.photo import Photo
+from chalicelib.services.photo import Photo
 from boto3.resources.base import ServiceResource
 
 

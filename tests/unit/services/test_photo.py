@@ -2,7 +2,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from boto3.resources.base import ServiceResource
-from services.photo import Photo
+from chalicelib.services.photo import Photo
 
 
 class TestPhoto(unittest.TestCase):

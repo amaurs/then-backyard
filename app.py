@@ -18,7 +18,7 @@ from aws_lambda_powertools import Logger
 from aws_lambda_powertools import Tracer
 import markovify
 
-from modules.container import container
+from chalicelib.modules import container
 
 app = Chalice(app_name='then-backyard')
 logger = Logger()

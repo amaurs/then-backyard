@@ -1,4 +1,3 @@
-import os
 from collections import Counter
 from dataclasses import dataclass
 from aws_lambda_powertools import Logger

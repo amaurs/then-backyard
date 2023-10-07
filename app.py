@@ -31,6 +31,8 @@ app.register_middleware(ConvertToMiddleware(tracer.capture_lambda_handler))
 def jwt_auth(auth_request):
     token = auth_request.token
 
+    logger.info("Evaluating authorization token={token}")
+
     # TODO: Implement real jwt authorization.
 
     if token == 'faunita':

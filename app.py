@@ -27,11 +27,12 @@ tracer = Tracer()
 app.register_middleware(ConvertToMiddleware(logger.inject_lambda_context))
 app.register_middleware(ConvertToMiddleware(tracer.capture_lambda_handler))
 
+
 @app.authorizer()
-def jwt_auth(auth_request):
+def jwt_auth(auth_request: AuthRequest) -> AuthResponse:
     token = auth_request.token
 
-    logger.info("Evaluating authorization token={token}")
+    logger.info(f"Evaluating authorization token={token}")
 
     # TODO: Implement real jwt authorization.
 
@@ -583,6 +584,36 @@ def calendar(user: str) -> Response:
 @cache
 @app.route('/calendars/{user}/{key}', methods=['GET'], authorizer=jwt_auth, cors=True)
 def calendars(user: str, key: str) -> Response:
+    logger.info(
+        "Route authorized for user.",
+        extra={"data": {"context": app.current_request.context}})
+    photos = list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"calendar/{user}/{key.replace('-', '/')}")
+    return Response(
+        body={'photos': [photo.get("url") for photo in photos]},
+        status_code=200)
+
+
+@app.route('/no-cors-calendar/{user}', authorizer=jwt_auth)
+def no_cors_calendar(user: str) -> Response:
+    logger.info(
+        "Route authorized for user.",
+        extra={"data": {"context": app.current_request.context}})
+    return Response(
+        body={
+            'start': {
+                'year': 1986,
+                'month': 3,
+                'day': 23
+            },
+            'photos': container.photo_service().get_photo_counts_by_date(
+                prefix=f"calendar/{user}",
+                bucket=os.getenv("S3_BUCKET_NAME"))
+        },
+        status_code=200)
+
+
+@app.route('/no-cors-calendars/{user}/{key}', authorizer=jwt_auth)
+def no_cors_calendars(user: str, key: str) -> Response:
     logger.info(
         "Route authorized for user.",
         extra={"data": {"context": app.current_request.context}})

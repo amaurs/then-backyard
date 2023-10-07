@@ -4,7 +4,9 @@ import os
 import uuid
 import csv
 import math
+import jwt
 from collections import defaultdict
+from datetime import datetime, timezone, timedelta
 from functools import cache
 from typing import List, Dict
 
@@ -620,4 +622,14 @@ def no_cors_calendars(user: str, key: str) -> Response:
     photos = list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"calendar/{user}/{key.replace('-', '/')}")
     return Response(
         body={'photos': [photo.get("url") for photo in photos]},
+        status_code=200)
+
+
+@app.route('/login', methods=['POST'], cors=True)
+def login():
+    client = boto3.client(service_name='secretsmanager', region_name='us-east-1')
+    secret = client.get_secret_value(SecretId=os.getenv("JWT_SECRET_NAME")).get('SecretString')
+    token = jwt.encode({"exp": datetime.now(tz=timezone.utc) + timedelta(hours=1)}, secret, algorithm="HS256")
+    return Response(
+        body={'token': token},
         status_code=200)

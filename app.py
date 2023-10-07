@@ -13,7 +13,7 @@ import subprocess
 
 from botocore.exceptions import ClientError
 from chalice import Chalice, Response
-from chalice.app import ConvertToMiddleware
+from chalice.app import ConvertToMiddleware, AuthRequest, AuthResponse
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools import Tracer
 import markovify
@@ -27,6 +27,16 @@ tracer = Tracer()
 app.register_middleware(ConvertToMiddleware(logger.inject_lambda_context))
 app.register_middleware(ConvertToMiddleware(tracer.capture_lambda_handler))
 
+@app.authorizer()
+def jwt_auth(auth_request):
+    token = auth_request.token
+
+    # TODO: Implement real jwt authorization.
+
+    if token == 'faunita':
+        return AuthResponse(routes=['*'], principal_id='faunita')
+    else:
+        return AuthResponse(routes=[], principal_id='faunita')
 
 @app.middleware('http')
 def inject_route_info(event, get_response):
@@ -549,8 +559,11 @@ def update_names():
 
 
 @cache
-@app.route('/calendar/{user}', methods=['GET'], cors=True)
+@app.route('/calendar/{user}', methods=['GET'], authorizer=jwt_auth, cors=True)
 def calendar(user: str) -> Response:
+    logger.info(
+        "Route authorized for user.",
+        extra={"data": {"context": app.current_request.context}})
     return Response(
         body={
             'start': {
@@ -566,8 +579,11 @@ def calendar(user: str) -> Response:
 
 
 @cache
-@app.route('/calendars/{user}/{key}', methods=['GET'], cors=True)
+@app.route('/calendars/{user}/{key}', methods=['GET'], authorizer=jwt_auth, cors=True)
 def calendars(user: str, key: str) -> Response:
+    logger.info(
+        "Route authorized for user.",
+        extra={"data": {"context": app.current_request.context}})
     photos = list_helper(bucket=os.getenv("S3_BUCKET_NAME"), prefix=f"calendar/{user}/{key.replace('-', '/')}")
     return Response(
         body={'photos': [photo.get("url") for photo in photos]},

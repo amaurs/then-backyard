@@ -1,3 +1,4 @@
+import hashlib
 import json
 import random
 import os
@@ -15,7 +16,7 @@ import subprocess
 
 from botocore.exceptions import ClientError
 from chalice import Chalice, Response
-from chalice.app import ConvertToMiddleware, AuthRequest, AuthResponse
+from chalice.app import ConvertToMiddleware, AuthRequest, AuthResponse, UnauthorizedError
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools import Tracer
 import markovify
@@ -628,6 +629,13 @@ def no_cors_calendars(user: str, key: str) -> Response:
 @app.route('/login', methods=['POST'], cors=True)
 def login():
     client = boto3.client(service_name='secretsmanager', region_name='us-east-1')
+    request = app.current_request
+    body = request.json_body
+    password = body.get("password")
+    hashed_password = hashlib.md5(password.encode()).hexdigest()
+    if hashed_password != client.get_secret_value(
+            SecretId=os.getenv("HASHED_PASSWORD_SECRET_NAME")).get('SecretString'):
+        raise UnauthorizedError("Incorrect password.")
     secret = client.get_secret_value(SecretId=os.getenv("JWT_SECRET_NAME")).get('SecretString')
     token = jwt.encode({"exp": datetime.now(tz=timezone.utc) + timedelta(hours=1)}, secret, algorithm="HS256")
     return Response(

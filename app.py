@@ -34,15 +34,17 @@ app.register_middleware(ConvertToMiddleware(tracer.capture_lambda_handler))
 @app.authorizer()
 def jwt_auth(auth_request: AuthRequest) -> AuthResponse:
     token = auth_request.token
-
     logger.info(f"Evaluating authorization token={token}")
-
-    # TODO: Implement real jwt authorization.
-
-    if token == 'faunita':
+    try:
+        client = boto3.client(service_name='secretsmanager', region_name='us-east-1')
+        jwt.decode(
+            jwt=token,
+            key=client.get_secret_value(SecretId=os.getenv("JWT_SECRET_NAME")).get('SecretString'),
+            algorithms=["HS256"])
         return AuthResponse(routes=['*'], principal_id='faunita')
-    else:
+    except jwt.InvalidTokenError:
         return AuthResponse(routes=[], principal_id='faunita')
+
 
 @app.middleware('http')
 def inject_route_info(event, get_response):

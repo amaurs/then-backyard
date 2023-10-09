@@ -628,6 +628,23 @@ def no_cors_calendars(user: str, key: str) -> Response:
         status_code=200)
 
 
+@app.route('/flyer', methods=['GET'], cors=True)
+def flyer() -> Response:
+    s3 = boto3.resource('s3')
+    content_object = s3.Object(os.getenv("S3_BUCKET_NAME"), f'flyer.json')
+    data = json.loads(content_object.get()['Body'].read().decode('utf-8'))
+    country = None
+    if 'cloudfront-viewer-country' in app.current_request.headers:
+        country = app.current_request.headers['cloudfront-viewer-country']
+        logger.info(f"Country from headers is: {country}")
+    if country and country == "MX":
+        info = data[country]
+    else:
+        info = data["US"]
+    return Response(
+        body=info,
+        status_code=200)
+
 @app.route('/login', methods=['POST'], cors=True)
 def login():
     client = boto3.client(service_name='secretsmanager', region_name='us-east-1')

@@ -652,8 +652,10 @@ def login():
     body = request.json_body
     password = body.get("password")
     hashed_password = hashlib.md5(password.encode()).hexdigest()
+    logger.info(f"Hashed requested password: {hashed_password}")
     if hashed_password != client.get_secret_value(
             SecretId=os.getenv("HASHED_PASSWORD_SECRET_NAME")).get('SecretString'):
+        logger.info(f"Incorrect password.")
         raise UnauthorizedError("Incorrect password.")
     secret = client.get_secret_value(SecretId=os.getenv("JWT_SECRET_NAME")).get('SecretString')
     token = jwt.encode({"exp": datetime.now(tz=timezone.utc) + timedelta(hours=1)}, secret, algorithm="HS256")

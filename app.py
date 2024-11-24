@@ -597,7 +597,7 @@ def calendars(user: str, key: str) -> Response:
         body={'photos': [photo.get("url") for photo in photos]},
         status_code=200)
 
-
+@cache
 @app.route('/no-cors-calendar/{user}', authorizer=jwt_auth)
 def no_cors_calendar(user: str) -> Response:
     logger.info(
@@ -616,7 +616,7 @@ def no_cors_calendar(user: str) -> Response:
         },
         status_code=200)
 
-
+@cache
 @app.route('/no-cors-calendars/{user}/{key}', authorizer=jwt_auth)
 def no_cors_calendars(user: str, key: str) -> Response:
     logger.info(
@@ -662,3 +662,5 @@ def login():
     return Response(
         body={'token': token},
         status_code=200)
+
+

@@ -645,6 +645,31 @@ def flyer() -> Response:
         body=info,
         status_code=200)
 
+@app.route('/machine/status', methods=['GET'], authorizer=jwt_auth, cors=True)
+def machine_status() -> Response:
+    ec2 = boto3.client('ec2', region_name='us-east-1')
+    instance_id = os.getenv("EC2_INSTANCE_ID")
+    result = ec2.describe_instances(InstanceIds=[instance_id])
+    state = result['Reservations'][0]['Instances'][0]['State']['Name']
+    return Response(body={'instance_id': instance_id, 'state': state}, status_code=200)
+
+
+@app.route('/machine/start', methods=['POST'], authorizer=jwt_auth, cors=True)
+def machine_start() -> Response:
+    ec2 = boto3.client('ec2', region_name='us-east-1')
+    instance_id = os.getenv("EC2_INSTANCE_ID")
+    ec2.start_instances(InstanceIds=[instance_id])
+    return Response(body={'instance_id': instance_id, 'state': 'starting'}, status_code=200)
+
+
+@app.route('/machine/stop', methods=['POST'], authorizer=jwt_auth, cors=True)
+def machine_stop() -> Response:
+    ec2 = boto3.client('ec2', region_name='us-east-1')
+    instance_id = os.getenv("EC2_INSTANCE_ID")
+    ec2.stop_instances(InstanceIds=[instance_id])
+    return Response(body={'instance_id': instance_id, 'state': 'stopping'}, status_code=200)
+
+
 @app.route('/login', methods=['POST'], cors=True)
 def login():
     client = boto3.client(service_name='secretsmanager', region_name='us-east-1')

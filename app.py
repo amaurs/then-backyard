@@ -1,4 +1,3 @@
-import hashlib
 import json
 import random
 import os
@@ -6,6 +5,8 @@ import uuid
 import csv
 import math
 import jwt
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from functools import cache
@@ -31,19 +32,32 @@ app.register_middleware(ConvertToMiddleware(logger.inject_lambda_context))
 app.register_middleware(ConvertToMiddleware(tracer.capture_lambda_handler))
 
 
+CALENDAR_ROUTES = [
+    '/calendar/{user}',
+    '/calendars/{user}/{key}',
+    '/no-cors-calendar/{user}',
+    '/no-cors-calendars/{user}/{key}',
+]
+
+
 @app.authorizer()
 def jwt_auth(auth_request: AuthRequest) -> AuthResponse:
     token = auth_request.token
-    logger.info(f"Evaluating authorization token={token}")
+    logger.info("Evaluating authorization token")
     try:
         client = boto3.client(service_name='secretsmanager', region_name='us-east-1')
-        jwt.decode(
-            jwt=token,
-            key=client.get_secret_value(SecretId=os.getenv("JWT_SECRET_NAME")).get('SecretString'),
-            algorithms=["HS256"])
-        return AuthResponse(routes=['*'], principal_id='faunita')
+        secret = client.get_secret_value(SecretId=os.getenv("JWT_SECRET_NAME")).get('SecretString')
+        payload = jwt.decode(jwt=token, key=secret, algorithms=["HS256"])
+        roles = payload.get("roles", [])
+        principal = payload.get("sub", "unknown")
+        if "owner" in roles:
+            return AuthResponse(routes=['*'], principal_id=principal)
+        elif "family" in roles:
+            return AuthResponse(routes=CALENDAR_ROUTES, principal_id=principal)
+        else:
+            return AuthResponse(routes=[], principal_id="unknown")
     except jwt.InvalidTokenError:
-        return AuthResponse(routes=[], principal_id='faunita')
+        return AuthResponse(routes=[], principal_id="unknown")
 
 
 @app.middleware('http')
@@ -673,19 +687,40 @@ def machine_stop() -> Response:
 @app.route('/login', methods=['POST'], cors=True)
 def login():
     client = boto3.client(service_name='secretsmanager', region_name='us-east-1')
-    request = app.current_request
-    body = request.json_body
-    password = body.get("password")
-    hashed_password = hashlib.md5(password.encode()).hexdigest()
-    logger.info(f"Hashed requested password: {hashed_password}")
-    if hashed_password != client.get_secret_value(
-            SecretId=os.getenv("HASHED_PASSWORD_SECRET_NAME")).get('SecretString'):
-        logger.info(f"Incorrect password.")
-        raise UnauthorizedError("Incorrect password.")
+    body = app.current_request.json_body
+    credential = body.get("credential")
+
+    if not credential:
+        raise UnauthorizedError("Missing credential.")
+
+    google_client_id = client.get_secret_value(
+        SecretId=os.getenv("GOOGLE_CLIENT_ID_SECRET_NAME")).get('SecretString')
+
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            credential, google_requests.Request(), google_client_id)
+    except ValueError as e:
+        logger.info(f"Invalid Google token: {e}")
+        raise UnauthorizedError("Invalid Google token.")
+
+    if not idinfo.get("email_verified"):
+        raise UnauthorizedError("Email not verified.")
+
+    email = idinfo.get("email")
+    allowlist = json.loads(client.get_secret_value(
+        SecretId=os.getenv("EMAIL_ALLOWLIST_SECRET_NAME")).get('SecretString'))
+
+    if email not in allowlist:
+        logger.info(f"Email not in allowlist: {email}")
+        raise UnauthorizedError("Access denied.")
+
+    roles = allowlist[email]
     secret = client.get_secret_value(SecretId=os.getenv("JWT_SECRET_NAME")).get('SecretString')
-    token = jwt.encode({"exp": datetime.now(tz=timezone.utc) + timedelta(hours=1)}, secret, algorithm="HS256")
-    return Response(
-        body={'token': token},
-        status_code=200)
+    token = jwt.encode(
+        {"sub": email, "roles": roles, "exp": datetime.now(tz=timezone.utc) + timedelta(hours=8)},
+        secret,
+        algorithm="HS256")
+
+    return Response(body={'token': token, 'roles': roles}, status_code=200)
 
 

@@ -664,8 +664,14 @@ def machine_status() -> Response:
     ec2 = boto3.client('ec2', region_name='us-east-1')
     instance_id = os.getenv("EC2_INSTANCE_ID")
     result = ec2.describe_instances(InstanceIds=[instance_id])
-    state = result['Reservations'][0]['Instances'][0]['State']['Name']
-    return Response(body={'instance_id': instance_id, 'state': state}, status_code=200)
+    instance = result['Reservations'][0]['Instances'][0]
+    state = instance['State']['Name']
+    body = {'instance_id': instance_id, 'state': state}
+    if state == 'running':
+        body['public_ip'] = instance.get('PublicIpAddress')
+        body['instance_type'] = instance.get('InstanceType')
+        body['launch_time'] = instance['LaunchTime'].isoformat()
+    return Response(body=body, status_code=200)
 
 
 @app.route('/machine/start', methods=['POST'], authorizer=jwt_auth, cors=True)

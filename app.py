@@ -642,14 +642,6 @@ def no_cors_calendars(user: str, key: str) -> Response:
         status_code=200)
 
 
-@app.route('/flora', methods=['GET'], cors=True)
-def flora() -> Response:
-    lambda_client = boto3.client('lambda', region_name='us-east-1')
-    result = lambda_client.invoke(FunctionName='ThenBackend', InvocationType='RequestResponse')
-    body = json.loads(result['Payload'].read())
-    return Response(body=json.loads(body['body']), status_code=body['statusCode'])
-
-
 @app.route('/flyer', methods=['GET'], cors=True)
 def flyer() -> Response:
     s3 = boto3.resource('s3')
